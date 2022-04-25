@@ -111,8 +111,8 @@
 macro_rules! cfg_client {
     ($($item:item)*) => {
         $(
-            #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-            #[cfg(feature = "client")]
+            #[cfg_attr(docsrs, doc(cfg(any(feature = "client", feature = "client-wasi"))))]
+            #[cfg(any(feature = "client", feature = "client-wasi"))]
             $item
         )*
     }
@@ -130,12 +130,15 @@ macro_rules! cfg_config {
 macro_rules! cfg_error {
     ($($item:item)*) => {
         $(
-            #[cfg_attr(docsrs, doc(cfg(any(feature = "config", feature = "client"))))]
-            #[cfg(any(feature = "config", feature = "client"))]
+            #[cfg_attr(docsrs, doc(cfg(any(feature = "config", feature = "client", feature = "client-wasi"))))]
+            #[cfg(any(feature = "config", feature = "client", feature = "client-wasi"))]
             $item
         )*
     }
 }
+
+#[cfg(all(feature = "client", feature = "client-wasi"))]
+compile_error!("Feature 'client' and 'client-wasi' cannot be enabled together");
 
 cfg_client! {
     pub use kube_client::api;

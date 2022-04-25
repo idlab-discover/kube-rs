@@ -10,7 +10,7 @@ use crate::watcher;
 use futures::{
     pin_mut,
     stream::{self, Peekable},
-    Future, FutureExt, Stream, StreamExt, TryStream, TryStreamExt,
+    Future, Stream, StreamExt, TryStream, TryStreamExt,
 };
 use pin_project::pin_project;
 use std::{
@@ -20,7 +20,7 @@ use std::{
     task::Poll,
 };
 use stream::IntoStream;
-use tokio::{runtime::Handle, task::JoinHandle};
+// use tokio::{runtime::Handle, task::JoinHandle};
 
 /// Flattens each item in the list following the rules of [`watcher::Event::into_iter_applied`].
 pub fn try_flatten_applied<K, S: TryStream<Ok = watcher::Event<K>>>(
@@ -148,8 +148,21 @@ where
     stream::select(via.into_stream(), errs.map(Err)) // recombine
 }
 
+#[cfg(target_arch = "wasm32")]
+use {futures::future::RemoteHandle, futures::task::SpawnExt};
+
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    futures::FutureExt,
+    tokio::{runtime::Handle, task::JoinHandle},
+};
+
 /// A [`JoinHandle`] that cancels the [`Future`] when dropped, rather than detaching it
-pub struct CancelableJoinHandle<T> {
+pub(crate) struct CancelableJoinHandle<T> {
+    #[cfg(target_arch = "wasm32")]
+    inner: RemoteHandle<T>,
+
+    #[cfg(not(target_arch = "wasm32"))]
     inner: JoinHandle<T>,
 }
 
@@ -157,23 +170,36 @@ impl<T> CancelableJoinHandle<T>
 where
     T: Send + 'static,
 {
-    pub fn spawn(future: impl Future<Output = T> + Send + 'static, runtime: &Handle) -> Self {
+    pub fn spawn(future: impl Future<Output = T> + Send + 'static) -> Self {
         CancelableJoinHandle {
-            inner: runtime.spawn(future),
+            #[cfg(target_arch = "wasm32")]
+            inner: kube_runtime_abi::get_spawner()
+                .expect("spawner not initialised!")
+                .spawn_with_handle(future)
+                .unwrap(),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            inner: (&Handle::current()).spawn(future),
         }
     }
 }
 
 impl<T> Drop for CancelableJoinHandle<T> {
     fn drop(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
         self.inner.abort()
     }
 }
 
-impl<T> Future for CancelableJoinHandle<T> {
+impl<T: 'static> Future for CancelableJoinHandle<T> {
     type Output = T;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        #[cfg(target_arch = "wasm32")]
+        #[allow(unsafe_code)]
+        return unsafe { Pin::new_unchecked(&mut self.inner) }.poll(cx);
+
+        #[cfg(not(target_arch = "wasm32"))]
         self.inner.poll_unpin(cx).map(
             // JoinError => underlying future was either aborted (which should only happen when the handle is dropped), or
             // panicked (which should be propagated)

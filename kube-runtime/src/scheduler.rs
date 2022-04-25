@@ -8,8 +8,17 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tokio::time::Instant;
-use tokio_util::time::delay_queue::{self, DelayQueue};
+#[cfg(not(feature = "client-wasi"))]
+use {
+    tokio::time::Instant,
+    tokio_util::time::delay_queue::{self, DelayQueue},
+};
+
+#[cfg(feature = "client-wasi")]
+use {
+    wasm_delay_queue::delay_queue,
+    wasm_delay_queue::{DelayQueue, Instant},
+};
 
 /// A request to re-emit `message` at a given `Instant` (`run_at`).
 #[derive(Debug)]

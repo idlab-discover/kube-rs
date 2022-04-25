@@ -3,7 +3,14 @@ use std::{pin::Pin, task::Poll};
 use backoff::backoff::Backoff;
 use futures::{Future, Stream, TryStream};
 use pin_project::pin_project;
-use tokio::time::{sleep, Instant, Sleep};
+
+#[cfg(not(feature = "client-wasi"))] use tokio::time::{sleep, Instant, Sleep};
+
+#[cfg(feature = "client-wasi")]
+use {
+    wasm_delay_queue::sleep::{sleep, Sleep},
+    wasm_delay_queue::Instant,
+};
 
 /// Applies a [`Backoff`] policy to a [`Stream`]
 ///

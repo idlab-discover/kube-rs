@@ -4,7 +4,7 @@ use thiserror::Error;
 pub use kube_core::ErrorResponse;
 
 /// Possible errors when working with [`kube`][crate]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "config", feature = "client"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "config", feature = "client", feature = "client-wasi"))))]
 #[derive(Error, Debug)]
 pub enum Error {
     /// ApiError for when things fail

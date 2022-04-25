@@ -31,8 +31,11 @@ use std::{
 };
 use stream::BoxStream;
 use thiserror::Error;
-use tokio::{runtime::Handle, time::Instant};
 use tracing::{info_span, Instrument};
+
+#[cfg(not(feature = "client-wasi"))] use tokio::time::Instant;
+
+#[cfg(feature = "client-wasi")] use wasm_delay_queue::Instant;
 
 mod future_hash_map;
 mod runner;
@@ -271,7 +274,7 @@ where
             // 1. inputs from users queue stream
             queue.map_err(Error::QueueError).map_ok(|request| ScheduleRequest {
                 message: request.into(),
-                run_at: Instant::now() + Duration::from_millis(1),
+                run_at: Instant::now() - Duration::from_millis(1),
             })
             .on_complete(async move {
                 // On error: scheduler has already been shut down and there is nothing for us to do
@@ -725,6 +728,7 @@ where
     /// in the background while they terminate. This will block [`tokio::runtime::Runtime`] termination until they actually terminate,
     /// unless you run [`std::process::exit`] afterwards.
     #[must_use]
+    #[cfg(not(feature = "client-wasi"))]
     pub fn shutdown_on_signal(mut self) -> Self {
         async fn shutdown_signal() {
             futures::future::select(
@@ -781,12 +785,7 @@ where
         ReconcilerFut::Error: std::error::Error + Send + 'static,
     {
         applier(
-            move |obj, ctx| {
-                CancelableJoinHandle::spawn(
-                    reconciler(obj, ctx).into_future().in_current_span(),
-                    &Handle::current(),
-                )
-            },
+            move |obj, ctx| CancelableJoinHandle::spawn(reconciler(obj, ctx).into_future().in_current_span()),
             error_policy,
             context,
             self.reader,

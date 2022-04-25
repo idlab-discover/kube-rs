@@ -352,7 +352,7 @@ pub use file_config::{
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "client"))] // want to ensure this works without client features
+    #[cfg(not(any(feature = "client", feature = "client-wasi")))] // want to ensure this works without client features
     #[tokio::test]
     async fn config_loading_on_small_feature_set() {
         use super::Config;

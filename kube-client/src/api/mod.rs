@@ -43,7 +43,7 @@ use crate::Client;
 /// This abstracts over a [`Request`] and a type `K` so that
 /// we get automatic serialization/deserialization on the api calls
 /// implemented by the dynamic [`Resource`].
-#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "client", feature = "client-wasi"))))]
 #[derive(Clone)]
 pub struct Api<K> {
     /// The request builder object with its resource dependent url

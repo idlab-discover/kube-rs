@@ -49,7 +49,7 @@ impl DiscoveryMode {
 /// If caching of results is __not required__, then a simpler [`oneshot`](crate::discovery::oneshot) discovery system can be used.
 ///
 /// [`ApiGroup`]: crate::discovery::ApiGroup
-#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "client", feature = "client-wasi"))))]
 pub struct Discovery {
     client: Client,
     groups: HashMap<String, ApiGroup>,

@@ -73,6 +73,15 @@ macro_rules! cfg_client {
         )*
     }
 }
+macro_rules! cfg_client_wasi {
+    ($($item:item)*) => {
+        $(
+            #[cfg_attr(docsrs, doc(cfg(feature = "client-wasi")))]
+            #[cfg(feature = "client-wasi")]
+            $item
+        )*
+    }
+}
 macro_rules! cfg_config {
     ($($item:item)*) => {
         $(
@@ -106,6 +115,21 @@ cfg_client! {
     pub use discovery::Discovery;
 }
 
+cfg_client_wasi! {
+    pub mod api;
+    pub mod discovery;
+    pub mod client_wasi;
+
+    pub use client_wasi as client;
+
+    #[doc(inline)]
+    pub use api::Api;
+    #[doc(inline)]
+    pub use client::Client;
+    #[doc(inline)]
+    pub use discovery::Discovery;
+}
+
 cfg_config! {
     pub mod config;
     #[doc(inline)]
@@ -122,7 +146,6 @@ cfg_error! {
 pub use crate::core::{CustomResourceExt, Resource, ResourceExt};
 /// Re-exports from kube_core
 pub use kube_core as core;
-
 
 // Tests that require a cluster and the complete feature set
 // Can be run with `cargo test -p kube-client --lib features=rustls-tls,ws -- --ignored`
